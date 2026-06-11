@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ぽてウォーク</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: linear-gradient(180deg,
+        #0d2208 0%, #1a3a0a 35%, #2d5016 65%, #1a2f0a 100%);
+      min-height: 100vh;
+      font-family: 'Hiragino Maru Gothic Pro', 'BIZ UDPGothic', sans-serif;
+      color: #E8F5E9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+      padding-bottom: 48px;
+    }
+
+    /* ===== 浮遊する葉っぱ ===== */
+    .leaf {
+      position: fixed;
+      font-size: 1.1rem;
+      pointer-events: none;
+      z-index: 0;
+      animation: leafFall linear infinite;
+      opacity: 0;
+    }
+    @keyframes leafFall {
+      0%   { transform: translateY(-40px) rotate(0deg)   translateX(0);    opacity: 0; }
+      10%  { opacity: 0.7; }
+      90%  { opacity: 0.4; }
+      100% { transform: translateY(110vh) rotate(540deg) translateX(40px); opacity: 0; }
+    }
+
+    /* ===== 背景ぽてぽて（歩き） ===== */
+    .bg-walker {
+      position: fixed;
+      width: 70px; height: 70px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.45;
+      animation: walkAcross linear forwards;
+    }
+    @keyframes walkAcross {
+      from { transform: translateX(calc(100vw + 90px)) scaleX(-1); }
+      to   { transform: translateX(-100px) scaleX(-1); }
+    }
+
+    /* ===== タイトル ===== */
+    #title {
+      font-size: 1.7rem; font-weight: bold;
+      color: #A5D6A7;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+      padding: 20px 0 4px;
+      letter-spacing: 4px; text-align: center;
+      position: relative; z-index: 2;
+    }
+    #date-label {
+      font-size: 0.8rem; color: #81C784;
+      margin-bottom: 16px; opacity: 0.9;
+      position: relative; z-index: 2;
+    }
+
+    /* ===== 森の装飾ライン ===== */
+    .forest-line {
+      font-size: 1.9rem; letter-spacing: 2px;
+      opacity: 0.65; text-align: center;
+      position: relative; z-index: 2;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    /* ===== メインカード ===== */
+    #main-card {
+      width: min(400px, 93vw);
+      background: rgba(0,0,0,0.42);
+      border: 1px solid rgba(165,214,167,0.5);
+      border-radius: 24px;
+      padding: 22px 20px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 18px;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.5);
+      position: relative; z-index: 2;
+      backdrop-filter: blur(6px);
+    }
+
+    /* ===== ぽてぽてエリア ===== */
+    #chara-row {
+      display: flex; align-items: flex-end; gap: 12px;
+      width: 100%;
+    }
+    #chara-img {
+      width: 72px; height: 72px;
+      object-fit: contain; image-rendering: pixelated;
+      flex-shrink: 0;
+      transition: transform 0.3s;
+    }
+    #chara-img.bounce {
+      animation: charaBounce 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes charaBounce {
+      from { transform: scale(0.7) rotate(-8deg); }
+      to   { transform: scale(1)   rotate(0); }
+    }
+    #speech-bubble {
+      flex: 1;
+      background: rgba(165,214,167,0.13);
+      border: 1px solid rgba(165,214,167,0.55);
+      border-radius: 14px;
+      padding: 10px 13px;
+      font-size: 0.9rem; color: #E8F5E9;
+      line-height: 1.65; min-height: 52px;
+      display: flex; align-items: center;
+    }
+
+    /* ===== 歩数表示 ===== */
+    #steps-section { width: 100%; text-align: center; }
+
+    #steps-label {
+      font-size: 0.78rem; color: #A5D6A7;
+      letter-spacing: 2px; margin-bottom: 6px;
+    }
+    #steps-number {
+      font-size: 3.6rem; font-weight: bold;
+      color: #fff;
+      text-shadow: 0 3px 14px rgba(0,0,0,0.6);
+      letter-spacing: 2px;
+      line-height: 1;
+      transition: transform 0.15s;
+    }
+    #steps-number.pop {
+      animation: numPop 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes numPop {
+      from { transform: scale(1.18); color: #FFD54F; }
+      to   { transform: scale(1);    color: #fff; }
+    }
+
+    #steps-unit { font-size: 1rem; color: #81C784; margin-top: 2px; }
+
+    /* ===== プログレスバー ===== */
+    #progress-wrap { width: 100%; }
+    #progress-info {
+      display: flex; justify-content: space-between;
+      font-size: 0.78rem; color: #81C784; margin-bottom: 6px;
+    }
+    #progress-bg {
+      width: 100%; height: 14px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 7px; overflow: hidden;
+      border: 1px solid rgba(165,214,167,0.25);
+    }
+    #progress-fill {
+      height: 100%; border-radius: 7px;
+      background: linear-gradient(90deg, #43A047, #A5D6A7);
+      transition: width 0.5s ease;
+      position: relative;
+      min-width: 4px;
+    }
+    #progress-fill::after {
+      content: '';
+      position: absolute; right: 0; top: 0;
+      width: 8px; height: 100%;
+      background: rgba(255,255,255,0.5);
+      border-radius: 4px;
+      animation: progressShine 1.5s ease infinite;
+    }
+    @keyframes progressShine {
+      0%,100% { opacity: 0.4; }
+      50%      { opacity: 1; }
+    }
+    #remain-text {
+      font-size: 0.82rem; color: #A5D6A7;
+      text-align: center; margin-top: 7px;
+    }
+
+    /* ===== ボタンエリア ===== */
+    #btn-area { display: flex; gap: 10px; width: 100%; }
+
+    .action-btn {
+      flex: 1; padding: 12px 8px;
+      border-radius: 12px; border: 2px solid;
+      font-family: inherit; font-size: 0.88rem; font-weight: bold;
+      cursor: pointer; letter-spacing: 1px;
+      transition: transform 0.12s, background 0.15s;
+    }
+    .action-btn:active { transform: scale(0.95); }
+
+    #sensor-btn {
+      background: rgba(129,199,132,0.15); border-color: #66BB6A; color: #81C784;
+    }
+    #sensor-btn:hover { background: rgba(129,199,132,0.3); }
+    #sensor-btn.active {
+      background: rgba(76,175,80,0.25); border-color: #4CAF50; color: #A5D6A7;
+    }
+
+    #manual-btn {
+      background: rgba(165,214,167,0.1); border-color: rgba(165,214,167,0.45); color: #A5D6A7;
+    }
+    #manual-btn:hover { background: rgba(165,214,167,0.22); }
+
+    /* ===== 手動入力パネル ===== */
+    #manual-panel {
+      display: none;
+      width: 100%;
+      background: rgba(165,214,167,0.07);
+      border: 1px solid rgba(165,214,167,0.35);
+      border-radius: 14px;
+      padding: 14px 16px;
+      gap: 10px; flex-direction: column;
+    }
+    #manual-panel.show { display: flex; }
+    .manual-label {
+      font-size: 0.78rem; color: #A5D6A7; letter-spacing: 1px;
+    }
+    #manual-row { display: flex; gap: 8px; }
+    #manual-input {
+      flex: 1; padding: 10px 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(165,214,167,0.4);
+      border-radius: 10px; color: #E8F5E9;
+      font-family: inherit; font-size: 1.1rem;
+      outline: none;
+    }
+    #manual-input:focus { border-color: #66BB6A; }
+    #manual-add {
+      padding: 10px 18px;
+      border-radius: 10px; border: 2px solid #66BB6A;
+      background: rgba(76,175,80,0.2); color: #81C784;
+      font-family: inherit; font-size: 0.9rem; font-weight: bold;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #manual-add:hover { background: rgba(76,175,80,0.38); }
+    #manual-set {
+      padding: 7px 14px;
+      border-radius: 10px; border: 1px solid rgba(165,214,167,0.35);
+      background: transparent; color: rgba(165,214,167,0.6);
+      font-family: inherit; font-size: 0.78rem;
+      cursor: pointer; transition: all 0.15s; align-self: flex-end;
+    }
+    #manual-set:hover { color: #A5D6A7; border-color: #A5D6A7; }
+
+    /* ===== 今日の合計リセット ===== */
+    #reset-row {
+      display: flex; justify-content: flex-end; width: 100%;
+    }
+    #reset-btn {
+      padding: 5px 12px;
+      border-radius: 8px; border: 1px solid rgba(165,214,167,0.25);
+      background: transparent; color: rgba(165,214,167,0.45);
+      font-family: inherit; font-size: 0.72rem; cursor: pointer;
+      transition: all 0.15s;
+    }
+    #reset-btn:hover { color: rgba(239,154,154,0.8); border-color: rgba(239,154,154,0.4); }
+
+    /* ===== スタンプセクション ===== */
+    #stamp-section {
+      width: min(400px, 93vw);
+      position: relative; z-index: 2;
+      margin-top: 18px;
+    }
+    #stamp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; padding: 0 4px;
+    }
+    #stamp-title {
+      font-size: 1.05rem; font-weight: bold;
+      color: #A5D6A7; letter-spacing: 2px;
+    }
+    #stamp-count-badge {
+      background: rgba(255,213,79,0.2);
+      border: 1px solid #FFD54F;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.8rem; color: #FFD54F; font-weight: bold;
+    }
+
+    #stamp-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .stamp-item {
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      position: relative;
+      cursor: default;
+      transition: transform 0.2s;
+      animation: stampAppear 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    .stamp-item:hover { transform: scale(1.07); }
+    @keyframes stampAppear {
+      from { transform: scale(0) rotate(-15deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0);      opacity: 1; }
+    }
+
+    .stamp-img {
+      width: 60%; height: 60%;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .stamp-emoji {
+      font-size: 1.1rem; line-height: 1;
+    }
+    .stamp-num {
+      position: absolute; bottom: 2px;
+      font-size: 0.58rem; font-weight: bold;
+      opacity: 0.85;
+    }
+    .stamp-new {
+      position: absolute; top: -2px; right: -2px;
+      background: #EF5350; color: #fff;
+      font-size: 0.55rem; font-weight: bold;
+      border-radius: 6px; padding: 1px 4px;
+      letter-spacing: 0;
+    }
+    /* レア演出 */
+    .stamp-rare {
+      animation: stampAppear 0.4s cubic-bezier(0.34,1.56,0.64,1) both,
+                 rareGlow 2.5s ease infinite;
+    }
+    @keyframes rareGlow {
+      0%,100% { box-shadow: 0 0 8px 2px rgba(255,213,79,0.5); }
+      50%      { box-shadow: 0 0 18px 6px rgba(255,213,79,0.9); }
+    }
+    .stamp-legend {
+      animation: stampAppear 0.4s cubic-bezier(0.34,1.56,0.64,1) both,
+                 legendGlow 2s ease infinite;
+    }
+    @keyframes legendGlow {
+      0%   { box-shadow: 0 0 10px 3px rgba(206,147,216,0.6); filter: hue-rotate(0deg); }
+      50%  { box-shadow: 0 0 22px 8px rgba(206,147,216,1);   filter: hue-rotate(180deg); }
+      100% { box-shadow: 0 0 10px 3px rgba(206,147,216,0.6); filter: hue-rotate(360deg); }
+    }
+
+    /* 空のスタンプ枠 */
+    .stamp-empty {
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 2px dashed rgba(165,214,167,0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stamp-empty::after {
+      content: '？';
+      font-size: 1.2rem; opacity: 0.2;
+    }
+
+    #stamp-hint {
+      font-size: 0.75rem; color: #66BB6A;
+      text-align: center; margin-top: 12px; opacity: 0.8;
+    }
+
+    /* ===== スタンプ獲得オーバーレイ ===== */
+    #stamp-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+    }
+    #stamp-overlay.show { display: flex; }
+
+    #stamp-earn-title {
+      font-size: 1.5rem; font-weight: bold;
+      color: #FFD54F; text-align: center;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+      animation: titlePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both 0.2s;
+    }
+    @keyframes titlePop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    #stamp-earn-circle {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      animation: stampBigPop 0.55s cubic-bezier(0.34,1.56,0.64,1) both 0.1s;
+      position: relative;
+    }
+    @keyframes stampBigPop {
+      from { transform: scale(0) rotate(-20deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0);      opacity: 1; }
+    }
+    #stamp-earn-circle img {
+      width: 65%; height: 65%;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    #stamp-earn-emoji { font-size: 2.2rem; }
+    #stamp-earn-name {
+      font-size: 1rem; font-weight: bold;
+      color: #A5D6A7; letter-spacing: 2px;
+    }
+    #stamp-earn-msg {
+      font-size: 0.95rem; color: #E8F5E9;
+      text-align: center; line-height: 1.7; max-width: 280px;
+    }
+    #stamp-earn-close {
+      padding: 12px 36px;
+      border-radius: 14px; border: 2px solid #A5D6A7;
+      background: rgba(165,214,167,0.2); color: #A5D6A7;
+      font-family: inherit; font-size: 1rem; font-weight: bold;
+      cursor: pointer; letter-spacing: 1px;
+      transition: background 0.15s;
+    }
+    #stamp-earn-close:hover { background: rgba(165,214,167,0.38); }
+
+    /* 紙吹雪 */
+    .confetti {
+      position: fixed;
+      width: 8px; height: 8px;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 101;
+      animation: confettiFall linear forwards;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* センサー状態インジケータ */
+    #sensor-status {
+      font-size: 0.72rem; color: #81C784; opacity: 0.8;
+      text-align: center; width: 100%;
+    }
+    .status-dot {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; margin-right: 4px;
+      background: #66BB6A;
+      animation: dotPulse 1.5s ease infinite;
+    }
+    @keyframes dotPulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.4; transform: scale(0.7); }
+    }
+    .status-dot.off { background: rgba(165,214,167,0.3); animation: none; }
+  </style>
+</head>
+<body>
+
+<!-- 葉っぱパーティクル -->
+<div id="leaves-container"></div>
+
+<!-- タイトル -->
+<div id="title" style="position:relative;z-index:2;">🌿 ぽてウォーク 🌿</div>
+<div id="date-label"></div>
+
+<!-- 森の装飾ライン -->
+<div class="forest-line">🌲🌿🌱🌲🍃🌿🌲🌱🌿🌲</div>
+
+<!-- メインカード -->
+<div id="main-card">
+
+  <!-- ぽてぽてエリア -->
+  <div id="chara-row">
+    <img id="chara-img" src="images/chara_normal.png" alt="ぽてぽて">
+    <div id="speech-bubble">きょうも一緒に歩こうね🌿</div>
+  </div>
+
+  <!-- 歩数表示 -->
+  <div id="steps-section">
+    <div id="steps-label">きょうの歩数</div>
+    <div id="steps-number">0</div>
+    <div id="steps-unit">歩</div>
+  </div>
+
+  <!-- プログレスバー -->
+  <div id="progress-wrap">
+    <div id="progress-info">
+      <span id="progress-pct">0%</span>
+      <span>🏆 10,000歩</span>
+    </div>
+    <div id="progress-bg">
+      <div id="progress-fill" style="width:0%"></div>
+    </div>
+    <div id="remain-text">あと10,000歩でスタンプゲット！</div>
+  </div>
+
+  <!-- センサー状態 -->
+  <div id="sensor-status">
+    <span class="status-dot off" id="sensor-dot"></span>
+    <span id="sensor-text">センサー：停止中</span>
+  </div>
+
+  <!-- ボタン -->
+  <div id="btn-area">
+    <button class="action-btn" id="sensor-btn" onclick="toggleSensor()">
+      📱 センサー開始
+    </button>
+    <button class="action-btn" id="manual-btn" onclick="toggleManual()">
+      ✏️ 手動入力
+    </button>
+  </div>
+
+  <!-- 手動入力パネル -->
+  <div id="manual-panel">
+    <div class="manual-label">📝 歩数を入力</div>
+    <div id="manual-row">
+      <input id="manual-input" type="number" min="1" max="99999"
+             placeholder="例：3000" inputmode="numeric">
+      <button id="manual-add" onclick="addManualSteps()">追加</button>
+    </div>
+    <button id="manual-set" onclick="setManualSteps()">今日の合計として設定</button>
+  </div>
+
+  <!-- リセット -->
+  <div id="reset-row">
+    <button id="reset-btn" onclick="confirmReset()">🔄 今日の歩数をリセット</button>
+  </div>
+
+</div>
+
+<!-- スタンプセクション -->
+<div id="stamp-section">
+  <div id="stamp-header">
+    <div id="stamp-title">🐾 スタンプコレクション</div>
+    <div id="stamp-count-badge">0 個</div>
+  </div>
+  <div id="stamp-grid"></div>
+  <div id="stamp-hint">1万歩歩くごとにスタンプが増えるよ！</div>
+</div>
+
+<!-- スタンプ獲得オーバーレイ -->
+<div id="stamp-overlay">
+  <div id="stamp-earn-title">🎉 スタンプゲット！</div>
+  <div id="stamp-earn-circle">
+    <img src="images/potepote.png" alt="ぽてぽて" id="stamp-earn-img">
+    <div id="stamp-earn-emoji" style="display:none;"></div>
+  </div>
+  <div id="stamp-earn-name"></div>
+  <div id="stamp-earn-msg"></div>
+  <button id="stamp-earn-close" onclick="closeStampOverlay()">やったー！🌿</button>
+</div>
+
+<script>
+// ============================================================
+// スタンプ種類定義（10種類ループ）
+// ============================================================
+const STAMP_TYPES = [
+  { id:1,  name:'はじめの一歩',      bg:'#2E7D32', border:'#81C784', emoji:'🌱', rare:false },
+  { id:2,  name:'もりのさんぽ',      bg:'#00695C', border:'#4DB6AC', emoji:'🌿', rare:false },
+  { id:3,  name:'はれのひ',          bg:'#E65100', border:'#FFB74D', emoji:'☀️', rare:false },
+  { id:4,  name:'かぜのなか',        bg:'#1565C0', border:'#90CAF9', emoji:'🍃', rare:false },
+  { id:5,  name:'スペシャル',        bg:'#F57F17', border:'#FFD54F', emoji:'⭐', rare:true  },
+  { id:6,  name:'よつばのクローバー', bg:'#558B2F', border:'#AED581', emoji:'🍀', rare:false },
+  { id:7,  name:'ちょうちょ',        bg:'#880E4F', border:'#F48FB1', emoji:'🦋', rare:false },
+  { id:8,  name:'きのみ',            bg:'#4E342E', border:'#BCAAA4', emoji:'🌰', rare:false },
+  { id:9,  name:'ほしそら',          bg:'#283593', border:'#9FA8DA', emoji:'🌙', rare:false },
+  { id:10, name:'レジェンド',        bg:'#6A1B9A', border:'#CE93D8', emoji:'💎', rare:true  },
+];
+
+function getStampType(stampNum) {
+  if (stampNum % 10 === 0) return STAMP_TYPES[9]; // レジェンド
+  if (stampNum % 5 === 0)  return STAMP_TYPES[4]; // スペシャル
+  return STAMP_TYPES[(stampNum - 1) % 10];
+}
+
+// ============================================================
+// 応援セリフ
+// ============================================================
+const SPEECHES = {
+  start:   ['きょうも一緒に歩こうね🌿','ぽてぽても歩くよ〜！🐾','さあ出発だ！森の中を歩こう！'],
+  s100:    ['100歩！いいスタートだよ🌱'],
+  s500:    ['500歩！だいぶ歩いたね〜🐾'],
+  s1000:   ['1000歩！体がポカポカしてきた！🌿'],
+  s3000:   ['3000歩！森の奥まで来たよ〜🌲', '3000歩達成！すごい！'],
+  s5000:   ['5000歩！折り返し地点！あと半分！', '5000歩！ぽてぽてもドキドキ！🌟'],
+  s7000:   ['7000歩！もうちょっとだよ〜！🌿', '7000歩！がんばれがんばれ〜！🐾'],
+  s9000:   ['9000歩！あと1000歩！ぽてぽてドキドキ！', '9000歩！もうすぐスタンプだよ！✨'],
+  s10000:  ['1万歩！やったー！スタンプゲット！🎉', 'すごすぎる！1万歩達成！🏆'],
+  random:  [
+    '今日もいい天気だね🌿',
+    'いっしょに歩くの楽しいな〜🐾',
+    '森の空気、おいしいね！',
+    'ゆっくりでもぽてぽて進もうね🌱',
+    'ぽてぽても応援してるよ！',
+    'あの木の向こうに何があるかな？🌲',
+    '風が気持ちいいね〜🍃',
+    '体を動かすと元気になるね！🌿',
+    '毎日少しずつ、続けるのが大事だよ🐾',
+    '今日もよく歩いてるね！えらい！',
+  ],
+  stamp: [
+    'やったね！スタンプゲット！ぽてぽても嬉しいよ🎉',
+    '1万歩すごい！また一緒に頑張ろうね🌿',
+    'スタンプが増えてきたね！コレクション中〜！🐾',
+    'えへへ、またスタンプだよ〜！続けてね！',
+  ],
+};
+
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ============================================================
+// 状態変数
+// ============================================================
+let todaySteps    = 0;
+let todayDate     = '';
+let stamps        = [];     // {num, typeId, date}[]
+let lastMilestone = 0;      // 最後に達成した1万歩の倍数
+let newStampIds   = new Set(); // 未読スタンプ
+let sensorActive  = false;
+let sensorPermissionDenied = false;
+
+// ステップ検出
+let smoothMag     = 9.8;
+let stepPending   = false;
+let lastStepTime  = 0;
+const ALPHA            = 0.82;
+const PEAK_THRESHOLD   = 11.8;
+const VALLEY_THRESHOLD = 9.2;
+const MIN_STEP_MS      = 320;
+
+// ============================================================
+// ストレージ
+// ============================================================
+function saveState() {
+  try {
+    localStorage.setItem('potewalk_todaySteps',    String(todaySteps));
+    localStorage.setItem('potewalk_todayDate',     todayDate);
+    localStorage.setItem('potewalk_stamps',        JSON.stringify(stamps));
+    localStorage.setItem('potewalk_lastMilestone', String(lastMilestone));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const savedDate  = localStorage.getItem('potewalk_todayDate') || '';
+    const today      = getTodayString();
+
+    if (savedDate === today) {
+      todaySteps = parseInt(localStorage.getItem('potewalk_todaySteps') || '0', 10);
+    } else {
+      todaySteps = 0; // 日付変わったらリセット
+    }
+    todayDate     = today;
+    stamps        = JSON.parse(localStorage.getItem('potewalk_stamps') || '[]');
+    lastMilestone = parseInt(localStorage.getItem('potewalk_lastMilestone') || '0', 10);
+  } catch(e) {
+    todaySteps = 0; todayDate = getTodayString(); stamps = []; lastMilestone = 0;
+  }
+}
+
+function getTodayString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ============================================================
+// 歩数追加＆マイルストーン判定
+// ============================================================
+function addSteps(n) {
+  todaySteps += n;
+  checkMilestone();
+  updateUI();
+  saveState();
+
+  // 歩数に応じてセリフ変更
+  updateCheerBySteps();
+}
+
+function setSteps(n) {
+  todaySteps = Math.max(0, n);
+  checkMilestone();
+  updateUI();
+  saveState();
+  updateCheerBySteps();
+}
+
+let lastCheerSteps = -1;
+function updateCheerBySteps() {
+  const s = todaySteps;
+  const milestones = [
+    [10000, 's10000'], [9000, 's9000'], [7000, 's7000'],
+    [5000,  's5000'],  [3000, 's3000'], [1000, 's1000'],
+    [500,   's500'],   [100,  's100'],
+  ];
+  for (const [threshold, key] of milestones) {
+    if (s >= threshold && lastCheerSteps < threshold) {
+      if (SPEECHES[key]) setSpeech(SPEECHES[key][0]);
+      lastCheerSteps = threshold;
+      return;
+    }
+  }
+}
+
+function checkMilestone() {
+  const achieved = Math.floor(todaySteps / 10000);
+  if (achieved > lastMilestone) {
+    for (let i = lastMilestone + 1; i <= achieved; i++) {
+      earnStamp();
+    }
+    lastMilestone = achieved;
+  }
+}
+
+// ============================================================
+// スタンプ獲得
+// ============================================================
+function earnStamp() {
+  const stampNum  = stamps.length + 1;
+  const stampType = getStampType(stampNum);
+  const stamp     = { num: stampNum, typeId: stampType.id, date: getTodayString() };
+  stamps.push(stamp);
+  newStampIds.add(stampNum);
+  saveState();
+  renderStamps();
+  showStampOverlay(stamp, stampType);
+}
+
+function showStampOverlay(stamp, type) {
+  document.getElementById('stamp-earn-title').textContent =
+    type.rare ? `✨ ${type.emoji} レアスタンプ獲得！ ${type.emoji} ✨` : '🎉 スタンプゲット！';
+
+  const circle = document.getElementById('stamp-earn-circle');
+  circle.style.background  = type.bg;
+  circle.style.border      = `5px solid ${type.border}`;
+  circle.style.boxShadow   = `0 0 24px 8px ${type.border}88`;
+
+  document.getElementById('stamp-earn-img').style.display   = 'block';
+  document.getElementById('stamp-earn-emoji').style.display = 'none';
+
+  document.getElementById('stamp-earn-name').textContent = `No.${stamp.num}「${type.name}」`;
+  document.getElementById('stamp-earn-msg').textContent  =
+    pickRandom(SPEECHES.stamp) + `\n合計 ${stamps.length} 個！`;
+
+  document.getElementById('stamp-overlay').classList.add('show');
+  spawnConfetti();
+  setSpeech(pickRandom(SPEECHES.stamp), 'happy');
+  playEarnSound();
+}
+
+function closeStampOverlay() {
+  document.getElementById('stamp-overlay').classList.remove('show');
+  newStampIds.clear();
+  renderStamps();
+}
+
+// ============================================================
+// UI更新
+// ============================================================
+function updateUI() {
+  // 歩数
+  const numEl = document.getElementById('steps-number');
+  numEl.textContent = todaySteps.toLocaleString();
+  numEl.classList.remove('pop');
+  void numEl.offsetWidth;
+  numEl.classList.add('pop');
+
+  // プログレスバー（当日の1万歩ループ内の進捗）
+  const pctInCycle = (todaySteps % 10000) / 10000;
+  const pct = todaySteps >= 10000 * (lastMilestone + 1)
+    ? 100
+    : Math.min(100, Math.round(pctInCycle * 100));
+
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent  = pct + '%';
+
+  const remaining = 10000 - (todaySteps % 10000);
+  if (todaySteps > 0 && remaining === 10000) {
+    document.getElementById('remain-text').textContent = `🎊 ${Math.floor(todaySteps/10000)} 万歩達成！素晴らしい！`;
+  } else {
+    document.getElementById('remain-text').textContent =
+      `あと ${remaining.toLocaleString()} 歩でスタンプゲット！`;
+  }
+
+  // スタンプカウント
+  document.getElementById('stamp-count-badge').textContent = `${stamps.length} 個`;
+}
+
+function setSpeech(text, charaType) {
+  document.getElementById('speech-bubble').textContent = text;
+  const img = document.getElementById('chara-img');
+  const src = charaType === 'happy' ? 'images/chara_happy.png'
+            : charaType === 'think' ? 'images/chara_thinking.png'
+            : 'images/chara_normal.png';
+  img.src = src;
+  img.classList.remove('bounce');
+  void img.offsetWidth;
+  img.classList.add('bounce');
+}
+
+function updateDateLabel() {
+  const d = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('date-label').textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+}
+
+// ============================================================
+// スタンプ描画
+// ============================================================
+function renderStamps() {
+  const grid = document.getElementById('stamp-grid');
+  grid.innerHTML = '';
+
+  // 獲得済みスタンプを新しい順に表示
+  const reversed = [...stamps].reverse();
+  reversed.forEach(stamp => {
+    const type = STAMP_TYPES.find(t => t.id === stamp.typeId) || STAMP_TYPES[0];
+    const el   = document.createElement('div');
+    el.className = 'stamp-item' +
+      (type.rare && stamp.num % 10 === 0 ? ' stamp-legend' : '') +
+      (type.rare && stamp.num % 5 === 0 && stamp.num % 10 !== 0 ? ' stamp-rare' : '');
+    el.style.background = type.bg;
+    el.style.border     = `3px solid ${type.border}`;
+    el.style.boxShadow  = `0 3px 10px rgba(0,0,0,0.45)`;
+
+    el.innerHTML = `
+      <img src="images/potepote.png" alt="ぽてぽて" class="stamp-img">
+      <div class="stamp-emoji" style="font-size:0.85rem;position:absolute;bottom:18%;right:8%;">${type.emoji}</div>
+      <div class="stamp-num" style="color:${type.border};">No.${stamp.num}</div>
+      ${newStampIds.has(stamp.num) ? '<div class="stamp-new">NEW</div>' : ''}
+    `;
+
+    const titleEl = document.createElement('title');
+    titleEl.textContent = `${type.emoji} ${type.name}`;
+    el.appendChild(titleEl);
+    el.title = `No.${stamp.num}「${type.name}」\n取得日：${stamp.date}`;
+
+    grid.appendChild(el);
+  });
+
+  // 空枠（最大8個まで表示）
+  const empties = Math.max(0, Math.min(8, 8 - stamps.length));
+  for (let i = 0; i < empties; i++) {
+    const el = document.createElement('div');
+    el.className = 'stamp-empty';
+    grid.appendChild(el);
+  }
+}
+
+// ============================================================
+// センサー
+// ============================================================
+function toggleSensor() {
+  if (sensorActive) {
+    stopSensor();
+  } else {
+    startSensor();
+  }
+}
+
+function startSensor() {
+  if (typeof DeviceMotionEvent === 'undefined') {
+    setSpeech('このブラウザはセンサーに対応していないよ。手動入力を使ってね🌿');
+    return;
+  }
+
+  // iOS のパーミッション要求
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission()
+      .then(state => {
+        if (state === 'granted') {
+          activateSensor();
+        } else {
+          sensorPermissionDenied = true;
+          setSpeech('センサーの許可が必要だよ。手動入力でもOK！✏️');
+        }
+      })
+      .catch(() => {
+        setSpeech('センサーを使えなかった…手動入力を使ってね🌿');
+      });
+  } else {
+    activateSensor();
+  }
+}
+
+function activateSensor() {
+  window.addEventListener('devicemotion', onDeviceMotion);
+  sensorActive = true;
+  document.getElementById('sensor-btn').textContent = '📱 センサー停止';
+  document.getElementById('sensor-btn').classList.add('active');
+  document.getElementById('sensor-dot').classList.remove('off');
+  document.getElementById('sensor-text').textContent = 'センサー：計測中';
+  setSpeech('センサー開始！一緒に歩こうね🌿🐾', 'think');
+}
+
+function stopSensor() {
+  window.removeEventListener('devicemotion', onDeviceMotion);
+  sensorActive = false;
+  document.getElementById('sensor-btn').textContent = '📱 センサー開始';
+  document.getElementById('sensor-btn').classList.remove('active');
+  document.getElementById('sensor-dot').classList.add('off');
+  document.getElementById('sensor-text').textContent = 'センサー：停止中';
+  setSpeech('センサーを止めたよ。手動入力もできるよ🌿');
+}
+
+function onDeviceMotion(e) {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+
+  const raw = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+  smoothMag = ALPHA * smoothMag + (1 - ALPHA) * raw;
+
+  const now = Date.now();
+  if (!stepPending && smoothMag > PEAK_THRESHOLD) {
+    stepPending = true;
+    if (now - lastStepTime > MIN_STEP_MS) {
+      addSteps(1);
+      lastStepTime = now;
+    }
+  } else if (stepPending && smoothMag < VALLEY_THRESHOLD) {
+    stepPending = false;
+  }
+}
+
+// ============================================================
+// 手動入力
+// ============================================================
+function toggleManual() {
+  const panel = document.getElementById('manual-panel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) {
+    document.getElementById('manual-input').focus();
+  }
+}
+
+function addManualSteps() {
+  const val = parseInt(document.getElementById('manual-input').value, 10);
+  if (!val || val <= 0) return;
+  addSteps(val);
+  document.getElementById('manual-input').value = '';
+  setSpeech(`${val.toLocaleString()}歩追加したよ！その調子！🌿`);
+}
+
+function setManualSteps() {
+  const val = parseInt(document.getElementById('manual-input').value, 10);
+  if (!val || val < 0) return;
+  setSteps(val);
+  document.getElementById('manual-input').value = '';
+  document.getElementById('manual-panel').classList.remove('show');
+  setSpeech(`今日の歩数を${val.toLocaleString()}歩に設定したよ！🌿`);
+}
+
+// Enterキーで追加
+document.getElementById('manual-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addManualSteps();
+});
+
+function confirmReset() {
+  if (confirm('今日の歩数をリセットしますか？')) {
+    todaySteps    = 0;
+    lastMilestone = 0;
+    lastCheerSteps = -1;
+    saveState();
+    updateUI();
+    setSpeech('リセットしたよ！今日もいっしょにがんばろう🌿');
+  }
+}
+
+// ============================================================
+// 背景演出
+// ============================================================
+function spawnLeaves() {
+  const container = document.getElementById('leaves-container');
+  const leafEmojis = ['🍃','🍂','🌿','🍁','🌱'];
+  for (let i = 0; i < 12; i++) {
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    leaf.textContent = pickRandom(leafEmojis);
+    leaf.style.left   = (Math.random() * 100) + 'vw';
+    leaf.style.animationDuration  = (8 + Math.random() * 12) + 's';
+    leaf.style.animationDelay     = (Math.random() * 20) + 's';
+    leaf.style.fontSize = (0.7 + Math.random() * 0.8) + 'rem';
+    container.appendChild(leaf);
+  }
+}
+
+function spawnBgWalker() {
+  const img = document.createElement('img');
+  img.src       = 'images/potepote.png';
+  img.className = 'bg-walker';
+  img.style.top = (25 + Math.random() * 40) + '%';
+  const dur = 10 + Math.random() * 8;
+  img.style.animationDuration = dur + 's';
+  document.body.appendChild(img);
+  img.addEventListener('animationend', () => img.remove());
+}
+
+// 20〜45秒ごとにランダムで歩いてくる
+function startBgWalkers() {
+  function schedule() {
+    const delay = (18000 + Math.random() * 28000);
+    setTimeout(() => {
+      if (Math.random() < 0.75) spawnBgWalker();
+      schedule();
+    }, delay);
+  }
+  setTimeout(schedule, 5000); // 5秒後から開始
+}
+
+// 60〜120秒ごとにランダムセリフ
+function startRandomCheer() {
+  function schedule() {
+    const delay = (55000 + Math.random() * 65000);
+    setTimeout(() => {
+      if (document.getElementById('stamp-overlay').classList.contains('show')) {
+        schedule(); return;
+      }
+      setSpeech(pickRandom(SPEECHES.random));
+      schedule();
+    }, delay);
+  }
+  schedule();
+}
+
+// ============================================================
+// 紙吹雪
+// ============================================================
+function spawnConfetti() {
+  const colors = ['#FFD54F','#A5D6A7','#F48FB1','#90CAF9','#CE93D8','#FFB74D'];
+  for (let i = 0; i < 40; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left     = (Math.random() * 100) + 'vw';
+    el.style.top      = '-20px';
+    el.style.background = pickRandom(colors);
+    el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    el.style.animationDelay   = (Math.random() * 0.8) + 's';
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    el.style.width  = (6 + Math.random() * 6) + 'px';
+    el.style.height = (6 + Math.random() * 6) + 'px';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+}
+
+// ============================================================
+// サウンド
+// ============================================================
+let audioCtx = null;
+function playEarnSound() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523, 659, 784, 1047]; // C E G C
+    notes.forEach((freq, i) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = audioCtx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.14, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      osc.start(t); osc.stop(t + 0.3);
+    });
+  } catch(e) {}
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+function init() {
+  loadState();
+  updateDateLabel();
+  updateUI();
+  renderStamps();
+  spawnLeaves();
+  startBgWalkers();
+  startRandomCheer();
+  setSpeech(pickRandom(SPEECHES.start));
+
+  // 日付確認（0時をまたいだらリセット）
+  setInterval(() => {
+    const today = getTodayString();
+    if (today !== todayDate) {
+      todayDate     = today;
+      todaySteps    = 0;
+      lastMilestone = 0;
+      lastCheerSteps = -1;
+      saveState();
+      updateUI();
+      updateDateLabel();
+      setSpeech('新しい日が始まったよ！今日も一緒に歩こうね🌿');
+    }
+  }, 60000); // 1分ごとにチェック
+}
+
+init();
+</script>
+</body>
+</html>
