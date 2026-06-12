@@ -283,8 +283,8 @@
 
     #stamp-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
     }
 
     .stamp-item {
@@ -545,25 +545,31 @@
 
 <script>
 // ============================================================
-// スタンプ種類定義（10種類ループ）
+// スタンプ種類定義（固定順番15種）
 // ============================================================
 const STAMP_TYPES = [
-  { id:1,  name:'はじめの一歩',      bg:'#2E7D32', border:'#81C784', emoji:'🌱', rare:false },
-  { id:2,  name:'もりのさんぽ',      bg:'#00695C', border:'#4DB6AC', emoji:'🌿', rare:false },
-  { id:3,  name:'はれのひ',          bg:'#E65100', border:'#FFB74D', emoji:'☀️', rare:false },
-  { id:4,  name:'かぜのなか',        bg:'#1565C0', border:'#90CAF9', emoji:'🍃', rare:false },
-  { id:5,  name:'スペシャル',        bg:'#F57F17', border:'#FFD54F', emoji:'⭐', rare:true  },
-  { id:6,  name:'よつばのクローバー', bg:'#558B2F', border:'#AED581', emoji:'🍀', rare:false },
-  { id:7,  name:'ちょうちょ',        bg:'#880E4F', border:'#F48FB1', emoji:'🦋', rare:false },
-  { id:8,  name:'きのみ',            bg:'#4E342E', border:'#BCAAA4', emoji:'🌰', rare:false },
-  { id:9,  name:'ほしそら',          bg:'#283593', border:'#9FA8DA', emoji:'🌙', rare:false },
-  { id:10, name:'レジェンド',        bg:'#6A1B9A', border:'#CE93D8', emoji:'💎', rare:true  },
+  { id:1,  name:'微笑み',              img:'stamp_1.png',  bg:'#2E7D32', border:'#A5D6A7', rare:false },
+  { id:2,  name:'笑顔',                img:'stamp_2.png',  bg:'#1B5E20', border:'#66BB6A', rare:false },
+  { id:3,  name:'むっ！',              img:'stamp_3.png',  bg:'#BF360C', border:'#FF8A65', rare:false },
+  { id:4,  name:'ほ〜',               img:'stamp_4.png',  bg:'#0D47A1', border:'#64B5F6', rare:false },
+  { id:5,  name:'あっ！',              img:'stamp_5.png',  bg:'#F57F17', border:'#FFD54F', rare:true  },
+  { id:6,  name:'ぽてぽて歩く（まじめ）', img:'stamp_6.png',  bg:'#004D40', border:'#4DB6AC', rare:false },
+  { id:7,  name:'ぽてぽて歩く（微笑み）', img:'stamp_7.png',  bg:'#1A237E', border:'#9FA8DA', rare:false },
+  { id:8,  name:'ぽてぽて歩く（ほ〜）',  img:'stamp_8.png',  bg:'#4A148C', border:'#CE93D8', rare:false },
+  { id:9,  name:'ビー玉',              img:'stamp_9.png',  bg:'#006064', border:'#80DEEA', rare:false },
+  { id:10, name:'葉っぱ',              img:'stamp_10.png', bg:'#33691E', border:'#AED581', rare:true  },
+  { id:11, name:'準備中',              img:'stamp_11.png', bg:'#37474F', border:'#90A4AE', rare:false },
+  { id:12, name:'準備中',              img:'stamp_12.png', bg:'#37474F', border:'#90A4AE', rare:false },
+  { id:13, name:'準備中',              img:'stamp_13.png', bg:'#37474F', border:'#90A4AE', rare:false },
+  { id:14, name:'準備中',              img:'stamp_14.png', bg:'#37474F', border:'#90A4AE', rare:false },
+  { id:15, name:'準備中',              img:'stamp_15.png', bg:'#37474F', border:'#90A4AE', rare:false },
 ];
+const STAMP_MAX = 15; // 現在の最大スタンプ数
 
 function getStampType(stampNum) {
-  if (stampNum % 10 === 0) return STAMP_TYPES[9]; // レジェンド
-  if (stampNum % 5 === 0)  return STAMP_TYPES[4]; // スペシャル
-  return STAMP_TYPES[(stampNum - 1) % 10];
+  // 固定順番：1→2→3→…順番通り。上限を超えたら最後のスタンプを繰り返す
+  const idx = Math.min(stampNum, STAMP_MAX) - 1;
+  return STAMP_TYPES[idx];
 }
 
 // ============================================================
@@ -727,7 +733,10 @@ function showStampOverlay(stamp, type) {
   circle.style.border      = `5px solid ${type.border}`;
   circle.style.boxShadow   = `0 0 24px 8px ${type.border}88`;
 
-  document.getElementById('stamp-earn-img').style.display   = 'block';
+  const earnImg = document.getElementById('stamp-earn-img');
+  earnImg.src     = `images/${type.img}`;
+  earnImg.onerror = function() { this.src = 'images/potepote.png'; };
+  earnImg.style.display = 'block';
   document.getElementById('stamp-earn-emoji').style.display = 'none';
 
   document.getElementById('stamp-earn-name').textContent = `No.${stamp.num}「${type.name}」`;
@@ -804,39 +813,73 @@ function renderStamps() {
   const grid = document.getElementById('stamp-grid');
   grid.innerHTML = '';
 
-  // 獲得済みスタンプを新しい順に表示
-  const reversed = [...stamps].reverse();
-  reversed.forEach(stamp => {
-    const type = STAMP_TYPES.find(t => t.id === stamp.typeId) || STAMP_TYPES[0];
-    const el   = document.createElement('div');
-    el.className = 'stamp-item' +
-      (type.rare && stamp.num % 10 === 0 ? ' stamp-legend' : '') +
-      (type.rare && stamp.num % 5 === 0 && stamp.num % 10 !== 0 ? ' stamp-rare' : '');
-    el.style.background = type.bg;
-    el.style.border     = `3px solid ${type.border}`;
-    el.style.boxShadow  = `0 3px 10px rgba(0,0,0,0.45)`;
+  // 全スタンプ枠を No.1〜STAMP_MAX の順番に表示
+  for (let i = 1; i <= STAMP_MAX; i++) {
+    const type     = STAMP_TYPES[i - 1];
+    const earned   = stamps.find(s => s.num === i);
+    const isNew    = newStampIds.has(i);
+    const isRare   = type.rare;
 
-    el.innerHTML = `
-      <img src="images/potepote.png" alt="ぽてぽて" class="stamp-img">
-      <div class="stamp-emoji" style="font-size:0.85rem;position:absolute;bottom:18%;right:8%;">${type.emoji}</div>
-      <div class="stamp-num" style="color:${type.border};">No.${stamp.num}</div>
-      ${newStampIds.has(stamp.num) ? '<div class="stamp-new">NEW</div>' : ''}
-    `;
+    if (earned) {
+      // ===== 獲得済みスタンプ =====
+      const el = document.createElement('div');
+      el.className = 'stamp-item' +
+        (isRare && i === 10 ? ' stamp-legend' : '') +
+        (isRare && i === 5  ? ' stamp-rare'   : '');
+      el.style.background = type.bg;
+      el.style.border     = `3px solid ${type.border}`;
+      el.style.boxShadow  = `0 3px 12px rgba(0,0,0,0.5)`;
+      el.title = `No.${i}「${type.name}」\n取得日：${earned.date}`;
 
-    const titleEl = document.createElement('title');
-    titleEl.textContent = `${type.emoji} ${type.name}`;
-    el.appendChild(titleEl);
-    el.title = `No.${stamp.num}「${type.name}」\n取得日：${stamp.date}`;
+      const img = document.createElement('img');
+      img.src   = `images/${type.img}`;
+      img.alt   = type.name;
+      img.className = 'stamp-img';
+      // 画像が見つからない場合はpotepote.pngで代用
+      img.onerror = function() { this.src = 'images/potepote.png'; };
+      el.appendChild(img);
 
-    grid.appendChild(el);
-  });
+      const numEl = document.createElement('div');
+      numEl.className = 'stamp-num';
+      numEl.style.color = type.border;
+      numEl.textContent = `No.${i}`;
+      el.appendChild(numEl);
 
-  // 空枠（最大8個まで表示）
-  const empties = Math.max(0, Math.min(8, 8 - stamps.length));
-  for (let i = 0; i < empties; i++) {
-    const el = document.createElement('div');
-    el.className = 'stamp-empty';
-    grid.appendChild(el);
+      if (isNew) {
+        const newBadge = document.createElement('div');
+        newBadge.className = 'stamp-new';
+        newBadge.textContent = 'NEW';
+        el.appendChild(newBadge);
+      }
+
+      grid.appendChild(el);
+
+    } else {
+      // ===== 未獲得枠 =====
+      const el = document.createElement('div');
+      el.className = 'stamp-empty';
+      el.style.position   = 'relative';
+      el.style.borderRadius = '50%';
+      el.style.border     = `2px dashed rgba(165,214,167,0.2)`;
+      el.style.aspectRatio = '1';
+      el.style.display    = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.flexDirection  = 'column';
+      el.style.gap        = '2px';
+
+      const numEl = document.createElement('div');
+      numEl.style.cssText = 'font-size:0.62rem;color:rgba(165,214,167,0.3);font-weight:bold;';
+      numEl.textContent = `No.${i}`;
+      el.appendChild(numEl);
+
+      const lockEl = document.createElement('div');
+      lockEl.style.cssText = 'font-size:0.9rem;opacity:0.2;';
+      lockEl.textContent = '🔒';
+      el.appendChild(lockEl);
+
+      grid.appendChild(el);
+    }
   }
 }
 
